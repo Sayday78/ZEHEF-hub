@@ -1,4 +1,4 @@
-print("--==================================================
+--==================================================
 -- ZEHEF HUB | discord.gg/fsQ2B4tD
 --==================================================
 
@@ -253,4 +253,3 @@ Player.CharacterAdded:Connect(function(c)
     Humanoid = c:WaitForChild("Humanoid")
     Root = c:WaitForChild("HumanoidRootPart")
 end)
-")
