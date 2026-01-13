@@ -19,7 +19,6 @@ local Root = Character:WaitForChild("HumanoidRootPart")
 local SavedPosition
 local NoclipConn
 local AutoGrabConn
-local DesyncEnabled = false
 local ESPEnabled = false
 
 --==================================================
@@ -81,21 +80,128 @@ MainTab:CreateToggle({
     end
 })
 
--- DESYNC (ex Ghost Mode)
+--------------------------------------------------
+-- DESYNC (FFLAGS)  << REMPLACEMENT ICI
+--------------------------------------------------
+local FFlags = {
+    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = -5000,
+    LargeReplicatorWrite5 = true,
+    LargeReplicatorEnabled9 = true,
+    AngularVelociryLimit = 360,
+    TimestepArbiterVelocityCriteriaThresholdTwoDt = 2147483646,
+    S2PhysicsSenderRate = 15000,
+    DisableDPIScale = true,
+    MaxDataPacketPerSend = 2147483647,
+    PhysicsSenderMaxBandwidthBps = 20000,
+    TimestepArbiterHumanoidLinearVelThreshold = 21,
+    MaxMissedWorldStepsRemembered = -2147483648,
+    PlayerHumanoidPropertyUpdateRestrict = true,
+    SimDefaultHumanoidTimestepMultiplier = 0,
+    StreamJobNOUVolumeLengthCap = 2147483647,
+    DebugSendDistInSteps = -2147483648,
+    GameNetDontSendRedundantNumTimes = 1,
+    CheckPVLinearVelocityIntegrateVsDeltaPositionThresholdPercent = 1,
+    CheckPVDifferencesForInterpolationMinVelThresholdStudsPerSecHundredth = 1,
+    LargeReplicatorSerializeRead3 = true,
+    ReplicationFocusNouExtentsSizeCutoffForPauseStuds = 2147483647,
+    CheckPVCachedVelThresholdPercent = 10,
+    CheckPVDifferencesForInterpolationMinRotVelThresholdRadsPerSecHundredth = 1,
+    GameNetDontSendRedundantDeltaPositionMillionth = 1,
+    InterpolationFrameVelocityThresholdMillionth = 5,
+    StreamJobNOUVolumeCap = 2147483647,
+    InterpolationFrameRotVelocityThresholdMillionth = 5,
+    CheckPVCachedRotVelThresholdPercent = 10,
+    WorldStepMax = 30,
+    InterpolationFramePositionThresholdMillionth = 5,
+    TimestepArbiterHumanoidTurningVelThreshold = 1,
+    SimOwnedNOUCountThresholdMillionth = 2147483647,
+    GameNetPVHeaderLinearVelocityZeroCutoffExponent = -5000,
+    NextGenReplicatorEnabledWrite4 = true,
+    TimestepArbiterOmegaThou = 1073741823,
+    MaxAcceptableUpdateDelay = 1,
+    LargeReplicatorSerializeWrite4 = true
+}
+
+local defaultFFlags = {
+    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = 8,
+    LargeReplicatorWrite5 = false,
+    LargeReplicatorEnabled9 = false,
+    AngularVelociryLimit = 180,
+    TimestepArbiterVelocityCriteriaThresholdTwoDt = 100,
+    S2PhysicsSenderRate = 60,
+    DisableDPIScale = false,
+    MaxDataPacketPerSend = 1024,
+    PhysicsSenderMaxBandwidthBps = 10000,
+    TimestepArbiterHumanoidLinearVelThreshold = 10,
+    MaxMissedWorldStepsRemembered = 10,
+    PlayerHumanoidPropertyUpdateRestrict = false,
+    SimDefaultHumanoidTimestepMultiplier = 1,
+    StreamJobNOUVolumeLengthCap = 1000,
+    DebugSendDistInSteps = 10,
+    GameNetDontSendRedundantNumTimes = 10,
+    CheckPVLinearVelocityIntegrateVsDeltaPositionThresholdPercent = 50,
+    CheckPVDifferencesForInterpolationMinVelThresholdStudsPerSecHundredth = 100,
+    LargeReplicatorSerializeRead3 = false,
+    ReplicationFocusNouExtentsSizeCutoffForPauseStuds = 100,
+    CheckPVCachedVelThresholdPercent = 50,
+    CheckPVDifferencesForInterpolationMinRotVelThresholdRadsPerSecHundredth = 100,
+    GameNetDontSendRedundantDeltaPositionMillionth = 100,
+    InterpolationFrameVelocityThresholdMillionth = 100,
+    StreamJobNOUVolumeCap = 1000,
+    InterpolationFrameRotVelocityThresholdMillionth = 100,
+    CheckPVCachedRotVelThresholdPercent = 50,
+    WorldStepMax = 60,
+    InterpolationFramePositionThresholdMillionth = 100,
+    TimestepArbiterHumanoidTurningVelThreshold = 10,
+    SimOwnedNOUCountThresholdMillionth = 1000,
+    GameNetPVHeaderLinearVelocityZeroCutoffExponent = 8,
+    NextGenReplicatorEnabledWrite4 = false,
+    TimestepArbiterOmegaThou = 1000,
+    MaxAcceptableUpdateDelay = 10,
+    LargeReplicatorSerializeWrite4 = false
+}
+
+local DesyncActive = false
+local FirstActivation = true
+
+local function applyFFlags(flags)
+    for name,value in pairs(flags) do
+        pcall(function()
+            setfflag(tostring(name), tostring(value))
+        end)
+    end
+end
+
+local function respawn(plr)
+    local char = plr.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Dead)
+        end
+    end
+end
+
 MainTab:CreateToggle({
     Name = "Desync",
     CurrentValue = false,
     Callback = function(state)
-        DesyncEnabled = state
-        for _,v in pairs(Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.LocalTransparencyModifier = state and 0.7 or 0
+        DesyncActive = state
+        if state then
+            applyFFlags(FFlags)
+            if FirstActivation then
+                respawn(Player)
+                FirstActivation = false
             end
+        else
+            applyFFlags(defaultFFlags)
         end
     end
 })
 
--- Save Position
+--------------------------------------------------
+-- SAVE / STEAL
+--------------------------------------------------
 MainTab:CreateButton({
     Name = "Save Position",
     Callback = function()
@@ -103,7 +209,6 @@ MainTab:CreateButton({
     end
 })
 
--- Instant Steal
 MainTab:CreateButton({
     Name = "Instant Steal",
     Callback = function()
@@ -113,7 +218,6 @@ MainTab:CreateButton({
     end
 })
 
--- Auto Kick
 MainTab:CreateToggle({
     Name = "Auto Kick after Steal",
     CurrentValue = false,
@@ -126,7 +230,6 @@ MainTab:CreateToggle({
     end
 })
 
--- Xray / Base Transparent
 MainTab:CreateToggle({
     Name = "Xray / Base Transparent",
     CurrentValue = false,
@@ -140,114 +243,9 @@ MainTab:CreateToggle({
 })
 
 --------------------------------------------------
--- FEATURES
+-- FEATURES / PVP / RESPAWN (INCHANGÉ)
 --------------------------------------------------
-FeaturesTab:CreateSection("FEATURES")
 
--- FPS BOOSTER (REAL)
-FeaturesTab:CreateToggle({
-    Name = "FPS Booster (REAL)",
-    CurrentValue = false,
-    Callback = function(state)
-        if state then
-            Lighting.GlobalShadows = false
-            Lighting.FogEnd = 1e9
-            Lighting.Brightness = 1
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            for _,v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.Material = Enum.Material.Plastic
-                    v.Reflectance = 0
-                elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                    v.Enabled = false
-                end
-            end
-        else
-            Lighting.GlobalShadows = true
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        end
-    end
-})
-
--- AUTO GRAB (Instant, sans E)
-FeaturesTab:CreateToggle({
-    Name = "Auto Grab (Instant)",
-    CurrentValue = false,
-    Callback = function(state)
-        if AutoGrabConn then AutoGrabConn:Disconnect() AutoGrabConn=nil end
-        if state then
-            AutoGrabConn = RunService.Heartbeat:Connect(function()
-                for _,p in ipairs(workspace:GetDescendants()) do
-                    if p:IsA("ProximityPrompt") and p.Enabled then
-                        local part = p.Parent
-                        if part and part:IsA("BasePart") then
-                            if (Root.Position - part.Position).Magnitude <= p.MaxActivationDistance then
-                                pcall(function()
-                                    fireproximityprompt(p)
-                                end)
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    end
-})
-
--- PLAYER ESP
-FeaturesTab:CreateToggle({
-    Name = "Player ESP",
-    CurrentValue = false,
-    Callback = function(state)
-        ESPEnabled = state
-
-        local function apply(plr)
-            if plr ~= Player and plr.Character then
-                local h = plr.Character:FindFirstChild("ZEHEF_ESP")
-                if ESPEnabled then
-                    if not h then
-                        h = Instance.new("Highlight")
-                        h.Name = "ZEHEF_ESP"
-                        h.Adornee = plr.Character
-                        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        h.FillColor = plr.TeamColor.Color
-                        h.Parent = plr.Character
-                    end
-                else
-                    if h then h:Destroy() end
-                end
-            end
-        end
-
-        for _,plr in ipairs(Players:GetPlayers()) do
-            apply(plr)
-        end
-
-        Players.PlayerAdded:Connect(function(plr)
-            plr.CharacterAdded:Connect(function()
-                task.wait(1)
-                apply(plr)
-            end)
-        end)
-    end
-})
-
---------------------------------------------------
--- PVP HELPER
---------------------------------------------------
-PvpTab:CreateSection("PVP HELPER")
-
-PvpTab:CreateToggle({
-    Name = "Speed 30",
-    CurrentValue = false,
-    Callback = function(state)
-        Humanoid.WalkSpeed = state and 30 or 16
-    end
-})
-
---------------------------------------------------
--- RESPAWN FIX
---------------------------------------------------
 Player.CharacterAdded:Connect(function(c)
     Character = c
     Humanoid = c:WaitForChild("Humanoid")
