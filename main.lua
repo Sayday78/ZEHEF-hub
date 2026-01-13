@@ -9,6 +9,8 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local Stats = game:GetService("Stats")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -20,6 +22,7 @@ local SavedPosition
 local NoclipConn
 local AutoGrabConn
 local ESPEnabled = false
+local AP_SPAMM_Enabled = false
 
 --==================================================
 -- UI (RAYFIELD)
@@ -80,128 +83,7 @@ MainTab:CreateToggle({
     end
 })
 
---------------------------------------------------
--- DESYNC (FFLAGS)  << REMPLACEMENT ICI
---------------------------------------------------
-local FFlags = {
-    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = -5000,
-    LargeReplicatorWrite5 = true,
-    LargeReplicatorEnabled9 = true,
-    AngularVelociryLimit = 360,
-    TimestepArbiterVelocityCriteriaThresholdTwoDt = 2147483646,
-    S2PhysicsSenderRate = 15000,
-    DisableDPIScale = true,
-    MaxDataPacketPerSend = 2147483647,
-    PhysicsSenderMaxBandwidthBps = 20000,
-    TimestepArbiterHumanoidLinearVelThreshold = 21,
-    MaxMissedWorldStepsRemembered = -2147483648,
-    PlayerHumanoidPropertyUpdateRestrict = true,
-    SimDefaultHumanoidTimestepMultiplier = 0,
-    StreamJobNOUVolumeLengthCap = 2147483647,
-    DebugSendDistInSteps = -2147483648,
-    GameNetDontSendRedundantNumTimes = 1,
-    CheckPVLinearVelocityIntegrateVsDeltaPositionThresholdPercent = 1,
-    CheckPVDifferencesForInterpolationMinVelThresholdStudsPerSecHundredth = 1,
-    LargeReplicatorSerializeRead3 = true,
-    ReplicationFocusNouExtentsSizeCutoffForPauseStuds = 2147483647,
-    CheckPVCachedVelThresholdPercent = 10,
-    CheckPVDifferencesForInterpolationMinRotVelThresholdRadsPerSecHundredth = 1,
-    GameNetDontSendRedundantDeltaPositionMillionth = 1,
-    InterpolationFrameVelocityThresholdMillionth = 5,
-    StreamJobNOUVolumeCap = 2147483647,
-    InterpolationFrameRotVelocityThresholdMillionth = 5,
-    CheckPVCachedRotVelThresholdPercent = 10,
-    WorldStepMax = 30,
-    InterpolationFramePositionThresholdMillionth = 5,
-    TimestepArbiterHumanoidTurningVelThreshold = 1,
-    SimOwnedNOUCountThresholdMillionth = 2147483647,
-    GameNetPVHeaderLinearVelocityZeroCutoffExponent = -5000,
-    NextGenReplicatorEnabledWrite4 = true,
-    TimestepArbiterOmegaThou = 1073741823,
-    MaxAcceptableUpdateDelay = 1,
-    LargeReplicatorSerializeWrite4 = true
-}
-
-local defaultFFlags = {
-    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = 8,
-    LargeReplicatorWrite5 = false,
-    LargeReplicatorEnabled9 = false,
-    AngularVelociryLimit = 180,
-    TimestepArbiterVelocityCriteriaThresholdTwoDt = 100,
-    S2PhysicsSenderRate = 60,
-    DisableDPIScale = false,
-    MaxDataPacketPerSend = 1024,
-    PhysicsSenderMaxBandwidthBps = 10000,
-    TimestepArbiterHumanoidLinearVelThreshold = 10,
-    MaxMissedWorldStepsRemembered = 10,
-    PlayerHumanoidPropertyUpdateRestrict = false,
-    SimDefaultHumanoidTimestepMultiplier = 1,
-    StreamJobNOUVolumeLengthCap = 1000,
-    DebugSendDistInSteps = 10,
-    GameNetDontSendRedundantNumTimes = 10,
-    CheckPVLinearVelocityIntegrateVsDeltaPositionThresholdPercent = 50,
-    CheckPVDifferencesForInterpolationMinVelThresholdStudsPerSecHundredth = 100,
-    LargeReplicatorSerializeRead3 = false,
-    ReplicationFocusNouExtentsSizeCutoffForPauseStuds = 100,
-    CheckPVCachedVelThresholdPercent = 50,
-    CheckPVDifferencesForInterpolationMinRotVelThresholdRadsPerSecHundredth = 100,
-    GameNetDontSendRedundantDeltaPositionMillionth = 100,
-    InterpolationFrameVelocityThresholdMillionth = 100,
-    StreamJobNOUVolumeCap = 1000,
-    InterpolationFrameRotVelocityThresholdMillionth = 100,
-    CheckPVCachedRotVelThresholdPercent = 50,
-    WorldStepMax = 60,
-    InterpolationFramePositionThresholdMillionth = 100,
-    TimestepArbiterHumanoidTurningVelThreshold = 10,
-    SimOwnedNOUCountThresholdMillionth = 1000,
-    GameNetPVHeaderLinearVelocityZeroCutoffExponent = 8,
-    NextGenReplicatorEnabledWrite4 = false,
-    TimestepArbiterOmegaThou = 1000,
-    MaxAcceptableUpdateDelay = 10,
-    LargeReplicatorSerializeWrite4 = false
-}
-
-local DesyncActive = false
-local FirstActivation = true
-
-local function applyFFlags(flags)
-    for name,value in pairs(flags) do
-        pcall(function()
-            setfflag(tostring(name), tostring(value))
-        end)
-    end
-end
-
-local function respawn(plr)
-    local char = plr.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Dead)
-        end
-    end
-end
-
-MainTab:CreateToggle({
-    Name = "Desync",
-    CurrentValue = false,
-    Callback = function(state)
-        DesyncActive = state
-        if state then
-            applyFFlags(FFlags)
-            if FirstActivation then
-                respawn(Player)
-                FirstActivation = false
-            end
-        else
-            applyFFlags(defaultFFlags)
-        end
-    end
-})
-
---------------------------------------------------
--- SAVE / STEAL
---------------------------------------------------
+-- Save Position
 MainTab:CreateButton({
     Name = "Save Position",
     Callback = function()
@@ -209,6 +91,7 @@ MainTab:CreateButton({
     end
 })
 
+-- Instant Steal
 MainTab:CreateButton({
     Name = "Instant Steal",
     Callback = function()
@@ -218,6 +101,7 @@ MainTab:CreateButton({
     end
 })
 
+-- Auto Kick
 MainTab:CreateToggle({
     Name = "Auto Kick after Steal",
     CurrentValue = false,
@@ -230,6 +114,7 @@ MainTab:CreateToggle({
     end
 })
 
+-- Xray / Base Transparent
 MainTab:CreateToggle({
     Name = "Xray / Base Transparent",
     CurrentValue = false,
@@ -243,9 +128,123 @@ MainTab:CreateToggle({
 })
 
 --------------------------------------------------
--- FEATURES / PVP / RESPAWN (INCHANGÉ)
+-- AP SPAMM (AJOUTÉ)
 --------------------------------------------------
+local AP_Gui
+local AP_Remote
+pcall(function()
+    AP_Remote = ReplicatedStorage:WaitForChild("Packages")
+        :WaitForChild("Net")
+        :WaitForChild("RE/AdminPanelService/ExecuteCommand")
+end)
 
+local AP_Commands = {"rocket", "balloon", "ragdoll", "jail", "tiny", "jumpscare", "morph"}
+
+local function AP_Execute(target)
+    if not AP_Remote then return end
+    for _,cmd in ipairs(AP_Commands) do
+        pcall(function()
+            AP_Remote:FireServer(target, cmd)
+        end)
+    end
+end
+
+local function AP_CreateGui()
+    AP_Gui = Instance.new("ScreenGui", Player.PlayerGui)
+    AP_Gui.Name = "ZEHEF_AP_SPAMM"
+    AP_Gui.ResetOnSpawn = false
+
+    local Frame = Instance.new("Frame", AP_Gui)
+    Frame.Size = UDim2.new(0, 260, 0, 360)
+    Frame.Position = UDim2.new(0, 15, 0.5, -180)
+    Frame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+    Frame.BorderSizePixel = 0
+
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,14)
+
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Size = UDim2.new(1,0,0,40)
+    Title.BackgroundTransparency = 1
+    Title.Text = "AP SPAMM"
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 18
+    Title.TextColor3 = Color3.new(1,1,1)
+
+    local List = Instance.new("UIListLayout", Frame)
+    List.Padding = UDim.new(0,6)
+
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr ~= Player then
+            local Btn = Instance.new("TextButton", Frame)
+            Btn.Size = UDim2.new(1,-20,0,36)
+            Btn.Text = plr.Name
+            Btn.Font = Enum.Font.Gotham
+            Btn.TextSize = 14
+            Btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
+            Btn.TextColor3 = Color3.new(1,1,1)
+            Btn.MouseButton1Click:Connect(function()
+                AP_Execute(plr)
+            end)
+            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,10)
+        end
+    end
+end
+
+MainTab:CreateToggle({
+    Name = "AP SPAMM",
+    CurrentValue = false,
+    Callback = function(state)
+        AP_SPAMM_Enabled = state
+        if state then
+            if not AP_Gui then
+                AP_CreateGui()
+            else
+                AP_Gui.Enabled = true
+            end
+        else
+            if AP_Gui then
+                AP_Gui.Enabled = false
+            end
+        end
+    end
+})
+
+--------------------------------------------------
+-- FEATURES
+--------------------------------------------------
+FeaturesTab:CreateSection("FEATURES")
+
+-- FPS BOOSTER
+FeaturesTab:CreateToggle({
+    Name = "FPS Booster",
+    CurrentValue = false,
+    Callback = function(state)
+        if state then
+            Lighting.GlobalShadows = false
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        else
+            Lighting.GlobalShadows = true
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        end
+    end
+})
+
+--------------------------------------------------
+-- PVP HELPER
+--------------------------------------------------
+PvpTab:CreateSection("PVP HELPER")
+
+PvpTab:CreateToggle({
+    Name = "Speed 30",
+    CurrentValue = false,
+    Callback = function(state)
+        Humanoid.WalkSpeed = state and 30 or 16
+    end
+})
+
+--------------------------------------------------
+-- RESPAWN FIX
+--------------------------------------------------
 Player.CharacterAdded:Connect(function(c)
     Character = c
     Humanoid = c:WaitForChild("Humanoid")
