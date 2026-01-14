@@ -33,9 +33,8 @@ local Window = Rayfield:CreateWindow({
     Name = "ZEHEF HUB  |  discord.gg/fsQ2B4tD",
     LoadingTitle = "ZEHEF HUB",
     LoadingSubtitle = "by Zehef",
-    Theme = "Pink",
-AccentColor = Color3.fromRGB(255, 105, 180) -- Rose
-
+    Theme = "Dark",
+    AccentColor = Color3.fromRGB(20, 60, 140) -- Bleu foncé
 })
 
 local MainTab = Window:CreateTab("MAIN")
