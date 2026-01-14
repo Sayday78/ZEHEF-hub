@@ -5,12 +5,9 @@
 -- SERVICES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local Stats = game:GetService("Stats")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -20,9 +17,12 @@ local Root = Character:WaitForChild("HumanoidRootPart")
 -- VARS
 local SavedPosition
 local NoclipConn
-local AutoGrabConn
 local ESPEnabled = false
-local AP_SPAMM_Enabled = false
+local ESPObjects = {}
+local TracerLines = {}
+local BaseRainbowConn
+local DesyncActive = false
+local FirstDesync = true
 
 --==================================================
 -- UI (RAYFIELD)
@@ -36,19 +36,15 @@ local Window = Rayfield:CreateWindow({
     Theme = "Dark"
 })
 
---==================================================
--- TABS
---==================================================
 local MainTab = Window:CreateTab("MAIN")
 local FeaturesTab = Window:CreateTab("FEATURES")
 local PvpTab = Window:CreateTab("PVP HELPER")
 
---------------------------------------------------
+--==================================================
 -- MAIN
---------------------------------------------------
+--==================================================
 MainTab:CreateSection("MAIN")
 
--- WalkSpeed
 MainTab:CreateSlider({
     Name = "WalkSpeed",
     Range = {16,120},
@@ -59,7 +55,6 @@ MainTab:CreateSlider({
     end
 })
 
--- NoClip
 MainTab:CreateToggle({
     Name = "NoClip",
     CurrentValue = false,
@@ -83,7 +78,6 @@ MainTab:CreateToggle({
     end
 })
 
--- Save Position
 MainTab:CreateButton({
     Name = "Save Position",
     Callback = function()
@@ -91,7 +85,6 @@ MainTab:CreateButton({
     end
 })
 
--- Instant Steal
 MainTab:CreateButton({
     Name = "Instant Steal",
     Callback = function()
@@ -101,7 +94,6 @@ MainTab:CreateButton({
     end
 })
 
--- Auto Kick
 MainTab:CreateToggle({
     Name = "Auto Kick after Steal",
     CurrentValue = false,
@@ -114,104 +106,58 @@ MainTab:CreateToggle({
     end
 })
 
--- Xray / Base Transparent
-MainTab:CreateToggle({
-    Name = "Xray / Base Transparent",
-    CurrentValue = false,
-    Callback = function(state)
-        for _,v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") and not v:IsDescendantOf(Character) then
-                v.LocalTransparencyModifier = state and 0.6 or 0
-            end
-        end
-    end
-})
+--==================== DESYNC ======================
+local FFlags = {
+    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = -5000,
+    LargeReplicatorWrite5 = true,
+    LargeReplicatorEnabled9 = true,
+    AngularVelociryLimit = 360,
+    S2PhysicsSenderRate = 15000,
+    MaxDataPacketPerSend = 2147483647
+}
 
---------------------------------------------------
--- AP SPAMM (AJOUTÉ)
---------------------------------------------------
-local AP_Gui
-local AP_Remote
-pcall(function()
-    AP_Remote = ReplicatedStorage:WaitForChild("Packages")
-        :WaitForChild("Net")
-        :WaitForChild("RE/AdminPanelService/ExecuteCommand")
-end)
+local DefaultFlags = {
+    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = 8,
+    LargeReplicatorWrite5 = false,
+    LargeReplicatorEnabled9 = false,
+    AngularVelociryLimit = 180,
+    S2PhysicsSenderRate = 60,
+    MaxDataPacketPerSend = 1024
+}
 
-local AP_Commands = {"rocket", "balloon", "ragdoll", "jail", "tiny", "jumpscare", "morph"}
-
-local function AP_Execute(target)
-    if not AP_Remote then return end
-    for _,cmd in ipairs(AP_Commands) do
+local function ApplyFlags(t)
+    for k,v in pairs(t) do
         pcall(function()
-            AP_Remote:FireServer(target, cmd)
+            setfflag(k, tostring(v))
         end)
     end
 end
 
-local function AP_CreateGui()
-    AP_Gui = Instance.new("ScreenGui", Player.PlayerGui)
-    AP_Gui.Name = "ZEHEF_AP_SPAMM"
-    AP_Gui.ResetOnSpawn = false
-
-    local Frame = Instance.new("Frame", AP_Gui)
-    Frame.Size = UDim2.new(0, 260, 0, 360)
-    Frame.Position = UDim2.new(0, 15, 0.5, -180)
-    Frame.BackgroundColor3 = Color3.fromRGB(15,15,20)
-    Frame.BorderSizePixel = 0
-
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,14)
-
-    local Title = Instance.new("TextLabel", Frame)
-    Title.Size = UDim2.new(1,0,0,40)
-    Title.BackgroundTransparency = 1
-    Title.Text = "AP SPAMM"
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 18
-    Title.TextColor3 = Color3.new(1,1,1)
-
-    local List = Instance.new("UIListLayout", Frame)
-    List.Padding = UDim.new(0,6)
-
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Player then
-            local Btn = Instance.new("TextButton", Frame)
-            Btn.Size = UDim2.new(1,-20,0,36)
-            Btn.Text = plr.Name
-            Btn.Font = Enum.Font.Gotham
-            Btn.TextSize = 14
-            Btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
-            Btn.TextColor3 = Color3.new(1,1,1)
-            Btn.MouseButton1Click:Connect(function()
-                AP_Execute(plr)
-            end)
-            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,10)
-        end
-    end
+local function Respawn()
+    local hum = Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum:ChangeState(Enum.HumanoidStateType.Dead) end
 end
 
 MainTab:CreateToggle({
-    Name = "AP SPAMM",
+    Name = "Desync",
     CurrentValue = false,
     Callback = function(state)
-        AP_SPAMM_Enabled = state
+        DesyncActive = state
         if state then
-            if not AP_Gui then
-                AP_CreateGui()
-            else
-                AP_Gui.Enabled = true
+            ApplyFlags(FFlags)
+            if FirstDesync then
+                Respawn()
+                FirstDesync = false
             end
         else
-            if AP_Gui then
-                AP_Gui.Enabled = false
-            end
+            ApplyFlags(DefaultFlags)
         end
     end
 })
 
---------------------------------------------------
+--==================================================
 -- FEATURES
---------------------------------------------------
+--==================================================
 FeaturesTab:CreateSection("FEATURES")
 
 -- FPS BOOSTER
@@ -219,19 +165,97 @@ FeaturesTab:CreateToggle({
     Name = "FPS Booster",
     CurrentValue = false,
     Callback = function(state)
-        if state then
-            Lighting.GlobalShadows = false
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        Lighting.GlobalShadows = not state
+        settings().Rendering.QualityLevel = state and Enum.QualityLevel.Level01 or Enum.QualityLevel.Automatic
+    end
+})
+
+--==================== PLAYER ESP ==================
+local function ClearESP()
+    for _,v in pairs(ESPObjects) do v:Destroy() end
+    for _,l in pairs(TracerLines) do l:Remove() end
+    ESPObjects = {}
+    TracerLines = {}
+end
+
+local function CreateESP(plr)
+    if plr == Player then return end
+    local char = plr.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+    local hl = Instance.new("Highlight")
+    hl.FillColor = Color3.fromRGB(0, 120, 255)
+    hl.OutlineColor = Color3.new(1,1,1)
+    hl.Parent = char
+    table.insert(ESPObjects, hl)
+
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Color = Color3.fromRGB(0,120,255)
+    table.insert(TracerLines, line)
+
+    RunService.RenderStepped:Connect(function()
+        if not ESPEnabled or not char.Parent then
+            line.Visible = false
+            return
+        end
+        local pos1, on1 = workspace.CurrentCamera:WorldToViewportPoint(Root.Position)
+        local pos2, on2 = workspace.CurrentCamera:WorldToViewportPoint(char.HumanoidRootPart.Position)
+        if on1 and on2 then
+            line.From = Vector2.new(pos1.X, pos1.Y)
+            line.To = Vector2.new(pos2.X, pos2.Y)
+            line.Visible = true
         else
-            Lighting.GlobalShadows = true
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+            line.Visible = false
+        end
+    end)
+end
+
+FeaturesTab:CreateToggle({
+    Name = "Player ESP",
+    CurrentValue = false,
+    Callback = function(state)
+        ESPEnabled = state
+        ClearESP()
+        if state then
+            for _,plr in ipairs(Players:GetPlayers()) do
+                CreateESP(plr)
+            end
         end
     end
 })
 
---------------------------------------------------
+Players.PlayerAdded:Connect(CreateESP)
+
+--==================== BASE RAINBOW =================
+local SpawnPos = Root.Position
+local BaseParts = {}
+
+for _,v in pairs(Workspace:GetDescendants()) do
+    if v:IsA("BasePart") and (v.Position - SpawnPos).Magnitude < 80 then
+        table.insert(BaseParts, v)
+    end
+end
+
+FeaturesTab:CreateToggle({
+    Name = "Base Rainbow",
+    CurrentValue = false,
+    Callback = function(state)
+        if BaseRainbowConn then BaseRainbowConn:Disconnect() end
+        if state then
+            BaseRainbowConn = RunService.RenderStepped:Connect(function()
+                local hue = tick() % 5 / 5
+                for _,p in pairs(BaseParts) do
+                    p.Color = Color3.fromHSV(hue,1,1)
+                end
+            end)
+        end
+    end
+})
+
+--==================================================
 -- PVP HELPER
---------------------------------------------------
+--==================================================
 PvpTab:CreateSection("PVP HELPER")
 
 PvpTab:CreateToggle({
@@ -242,9 +266,9 @@ PvpTab:CreateToggle({
     end
 })
 
---------------------------------------------------
+--==================================================
 -- RESPAWN FIX
---------------------------------------------------
+--==================================================
 Player.CharacterAdded:Connect(function(c)
     Character = c
     Humanoid = c:WaitForChild("Humanoid")
