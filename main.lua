@@ -23,6 +23,9 @@ local TracerLines = {}
 local BaseRainbowConn
 local DesyncActive = false
 local FirstDesync = true
+local InfiniteJumpEnabled = false
+local InfiniteJumpConn
+
 
 --==================================================
 -- UI (RAYFIELD)
@@ -253,6 +256,29 @@ FeaturesTab:CreateToggle({
         end
     end
 })
+
+--==================== INFINITE JUMP =================
+FeaturesTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Callback = function(state)
+        InfiniteJumpEnabled = state
+
+        if InfiniteJumpConn then
+            InfiniteJumpConn:Disconnect()
+            InfiniteJumpConn = nil
+        end
+
+        if state then
+            InfiniteJumpConn = game:GetService("UserInputService").JumpRequest:Connect(function()
+                if InfiniteJumpEnabled and Character and Humanoid then
+                    Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end)
+        end
+    end
+})
+
 
 --==================================================
 -- PVP HELPER
